@@ -5,7 +5,7 @@ parse_sms.db.py - Parse sms.db from iOS, supports edited messages
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2024-12-31 12:34:35'
+__updated__ = '2024-12-31 16:08:25'
 
 import os
 import sqlite3 
@@ -49,13 +49,18 @@ for row in c.fetchall():
 	id = row['id'] # handle.id
 	service = row['service']
 	date = unixTimeToString(macAbsTimeToUnixTime(row['date']))
-	text = row['text'] if row['text'] is not None else ''
+	text = f"'{row['text']}'" if row['text'] is not None else ''
 	date_edited = unixTimeToString(macAbsTimeToUnixTime(row['date_edited'])) if row['date_edited'] else ''
-	text_edited = ''
+	text_edited = f"''"
 
+	if date_edited != '' and text == '':
+		# edited message with no original text
+		text = '[deleted]'
+		text_edited = '[unsent]'
+
+	# parse original and edited texts from message_summary_info
 	if row['message_summary_info'] is None:
 		continue
-
 	message_summary_info = plistlib.loads(row['message_summary_info'])
 	if 'ec' in message_summary_info and '0' in message_summary_info['ec']:
 		# original text
@@ -66,9 +71,8 @@ for row in c.fetchall():
 				if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
 					continue
 				if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
-					text = v.value
+					text = f"'{v.value}'"
 					break
-
 		# edited text
 		ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[1])['t'])
 		for c in ts.contents:
@@ -77,10 +81,10 @@ for row in c.fetchall():
 				if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
 					continue
 				if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
-					text_edited = v.value
+					text_edited = f"'{v.value}'"
 					break
 
-	print(f"{ROWID},{fromto},'{id}',{service},{date},'{text}',{date_edited},'{text_edited}'")
+	print(f"{ROWID},{fromto},'{id}',{service},{date},{text},{date_edited},{text_edited}")
 
 conn.commit()
 conn.close()
