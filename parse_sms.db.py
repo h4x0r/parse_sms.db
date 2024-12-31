@@ -5,7 +5,7 @@ parse_sms.db.py - Parse sms.db from iOS, supports edited messages
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2024-12-31 03:02:35'
+__updated__ = '2024-12-31 12:34:35'
 
 import os
 import sqlite3 
@@ -14,12 +14,12 @@ import pytz
 import plistlib
 import typedstream
 
-def macAbsTimeNSToUnixTime(macAbsoluteTimeInNanoSeconds):
-    # Mac absolute time is from 2001-01-01, Unix time is from 1970-01-01
-	return macAbsoluteTimeInNanoSeconds/1e9 + 978307200
-
 def macAbsTimeToUnixTime(macAbsoluteTime):
-    # Mac absolute time is from 2001-01-01, Unix time is from 1970-01-01
+	# Normalize nanoseconds to seconds
+	if macAbsoluteTime > 0xFFFFFFFF:
+		macAbsoluteTime = macAbsoluteTime / 1e9
+
+	# Mac absolute time is from 2001-01-01, Unix time is from 1970-01-01
 	return macAbsoluteTime + 978307200
 
 def unixTimeToString(unixTime):
@@ -42,14 +42,15 @@ c = conn.cursor()
 statement = '''SELECT * FROM message m, handle h WHERE m.handle_id = h.ROWID ORDER BY m.ROWID'''
 c.execute(statement) 
 
-print(f"ROWID,From/To,Counterparty,Original Time,Original Text,Edited Time,Edited Text")
+print("ROWID,From/To,Counterparty,Service,Original Time,Original Text,Edited Time,Edited Text")
 for row in c.fetchall():
 	ROWID = row['ROWID']
-	date = unixTimeToString(macAbsTimeNSToUnixTime(row['date']))
 	fromto = "To" if row['is_from_me'] == 1 else "From"
-	id = row['id']
+	id = row['id'] # handle.id
+	service = row['service']
+	date = unixTimeToString(macAbsTimeToUnixTime(row['date']))
 	text = row['text'] if row['text'] is not None else ''
-	date_edited = unixTimeToString(macAbsTimeNSToUnixTime(row['date_edited'])) if row['date_edited'] else ''
+	date_edited = unixTimeToString(macAbsTimeToUnixTime(row['date_edited'])) if row['date_edited'] else ''
 	text_edited = ''
 
 	if row['message_summary_info'] is None:
@@ -57,7 +58,6 @@ for row in c.fetchall():
 
 	message_summary_info = plistlib.loads(row['message_summary_info'])
 	if 'ec' in message_summary_info and '0' in message_summary_info['ec']:
-		print('')		
 		# original text
 		ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[0])['t'])
 		for c in ts.contents:
@@ -80,7 +80,7 @@ for row in c.fetchall():
 					text_edited = v.value
 					break
 
-	print(f"{ROWID},{fromto},'{id}',{date},'{text}',{date_edited},'{text_edited}'")
+	print(f"{ROWID},{fromto},'{id}',{service},{date},'{text}',{date_edited},'{text_edited}'")
 
 conn.commit()
 conn.close()
