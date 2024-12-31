@@ -5,9 +5,10 @@ parse_sms.db.py - Parse sms.db from iOS, supports edited messages
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2024-12-31 16:08:25'
+__updated__ = '2024-12-31 16:43:16'
 
-import os
+import argparse
+from pathlib import Path
 import sqlite3 
 from datetime import datetime
 import pytz
@@ -27,16 +28,22 @@ def unixTimeToString(unixTime):
 
 def openSQLiteDB(db):
 	try:
-		if not os.path.exists(db):
-			print(f"Database {db} does not exist")
-			exit(1)
 		conn = sqlite3.connect(db)
 		return conn
 	except sqlite3.Error as e:
-		print(f"Error opening database: {e}")
+		print(f"Error opening sms.db file: {e}")
 		return None
 
-conn = openSQLiteDB('sms.db')
+parser = argparse.ArgumentParser()
+parser.add_argument("file", help="sms.db file")
+args = parser.parse_args()
+smsdbfile = Path(args.file)
+
+if not smsdbfile.is_file():
+    print("The sms.db file doesn't exist")
+    raise SystemExit(1)
+
+conn = openSQLiteDB(smsdbfile)
 conn.row_factory = sqlite3.Row
 c = conn.cursor() 
 statement = '''SELECT * FROM message m, handle h WHERE m.handle_id = h.ROWID ORDER BY m.ROWID'''
@@ -51,7 +58,7 @@ for row in c.fetchall():
 	date = unixTimeToString(macAbsTimeToUnixTime(row['date']))
 	text = f"'{row['text']}'" if row['text'] is not None else ''
 	date_edited = unixTimeToString(macAbsTimeToUnixTime(row['date_edited'])) if row['date_edited'] else ''
-	text_edited = f"''"
+	text_edited = "''"
 
 	if date_edited != '' and text == '':
 		# edited message with no original text
