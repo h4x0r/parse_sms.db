@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_sms.db.py - Parse sms.db from iOS, supports edited messages
+parse_sms.db.py - Parse sms.db from iOS, supports edited and unsent messages
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2024-12-31 16:43:16'
+__updated__ = '2024-12-31 23:37:44'
 
 import argparse
 from pathlib import Path
@@ -35,7 +35,7 @@ def openSQLiteDB(db):
 		return None
 
 parser = argparse.ArgumentParser()
-parser.add_argument("file", help="sms.db file")
+parser.add_argument("file", help="sms.db file, usually located in /private/var/mobile/Library/SMS/sms.db")
 args = parser.parse_args()
 smsdbfile = Path(args.file)
 
@@ -62,7 +62,7 @@ for row in c.fetchall():
 
 	if date_edited != '' and text == '':
 		# edited message with no original text
-		text = '[deleted]'
+		text = '[cleared upon unsent]'
 		text_edited = '[unsent]'
 
 	# parse original and edited texts from message_summary_info
