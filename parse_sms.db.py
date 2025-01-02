@@ -5,7 +5,7 @@ parse_sms.db.py - Parse sms.db from iOS, supports edited and unsent messages
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-02 21:35:06'
+__updated__ = '2025-01-02 22:41:28'
 
 from typing import Dict, List
 from argparse import ArgumentParser, Namespace
@@ -53,49 +53,53 @@ def main(args: Namespace = parseArgs()) -> int:
 	c.execute(statement) 
 
 	print("ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
+	lastrowid = 0
 	for row in c.fetchall():
-		ROWID = row['ROWID']
+		rowid = row['ROWID']
+		rowiddiff = rowid - lastrowid - 1
+		rowgap = f"[❌ row gap: {rowiddiff} rows missing]" if rowiddiff > 0 else ''
+		lastrowid = rowid
+  
 		fromto = "To" if row['is_from_me'] == 1 else "From"
 		id = row['id'] # handle.id
 		service = row['service']
 		date = unixTimeToString(macAbsTimeToUnixTime(row['date']))
 		text = f"'{row['text']}'" if row['text'] is not None else ''
-		date_read = unixTimeToString(macAbsTimeToUnixTime(row['date_read'])) if row['date_read'] else '[not read]'
+		date_read = unixTimeToString(macAbsTimeToUnixTime(row['date_read'])) if row['date_read'] else '[📬 unread]'
 		date_edited = unixTimeToString(macAbsTimeToUnixTime(row['date_edited'])) if row['date_edited'] else ''
 		text_edited = ''
 
 		if date_edited != '' and text == '':
 			# edited message with no original text
-			text = '[cleared upon unsent]'
-			text_edited = '[unsent]'
+			text = '[🫥 cleared upon unsent]'
+			text_edited = '[⏮️ unsent]'
 
 		# parse original and edited texts from message_summary_info
-		if row['message_summary_info'] is None:
-			continue
-		message_summary_info = plistlib.loads(row['message_summary_info'])
-		if 'ec' in message_summary_info and '0' in message_summary_info['ec']:
-			# original text
-			ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[0])['t'])
-			for c in ts.contents:
-				for v in c.values:
-					# check if v has the property 'archived_name'
-					if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
-						continue
-					if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
-						text = f"'{v.value}'"
-						break
-			# edited text
-			ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[1])['t'])
-			for c in ts.contents:
-				for v in c.values:
-					# check if v has the property 'archived_name'
-					if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
-						continue
-					if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
-						text_edited = f"'{v.value}'"
-						break
+		if row['message_summary_info'] is not None:
+			message_summary_info = plistlib.loads(row['message_summary_info'])
+			if 'ec' in message_summary_info and '0' in message_summary_info['ec']:
+				# original text
+				ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[0])['t'])
+				for c in ts.contents:
+					for v in c.values:
+						# check if v has the property 'archived_name'
+						if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
+							continue
+						if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
+							text = f"'{v.value}'"
+							break
+				# edited text
+				ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[1])['t'])
+				for c in ts.contents:
+					for v in c.values:
+						# check if v has the property 'archived_name'
+						if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
+							continue
+						if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
+							text_edited = f"'{v.value}'"
+							break
 
-		print(f"{ROWID},{fromto},'{id}',{service},{date},{text},{date_read},{date_edited},{text_edited}")
+		print(f"{rowgap},{rowid},{fromto},'{id}',{service},{date},{text},{date_read},{date_edited},{text_edited}")
 
 	conn.commit()
 	conn.close()
