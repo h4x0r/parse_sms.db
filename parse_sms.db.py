@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_sms.db.py - Parse sms.db from iOS, supports edited and unsent messages
+parse_sms.db.py - Parse sms.db from iOS
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-02 22:41:28'
+__updated__ = '2025-01-02 23:10:20'
 
 from typing import Dict, List
 from argparse import ArgumentParser, Namespace
@@ -52,7 +52,7 @@ def main(args: Namespace = parseArgs()) -> int:
 	statement = '''SELECT * FROM message m, handle h WHERE m.handle_id = h.ROWID ORDER BY m.ROWID'''
 	c.execute(statement) 
 
-	print("ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
+	print("Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
 	lastrowid = 0
 	for row in c.fetchall():
 		rowid = row['ROWID']
@@ -71,7 +71,7 @@ def main(args: Namespace = parseArgs()) -> int:
 
 		if date_edited != '' and text == '':
 			# edited message with no original text
-			text = '[🫥 cleared upon unsent]'
+			text = '[🧹 cleared upon unsent]'
 			text_edited = '[⏮️ unsent]'
 
 		# parse original and edited texts from message_summary_info
