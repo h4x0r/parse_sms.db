@@ -5,7 +5,7 @@ parse_sms.db.py - Parse sms.db from iOS
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-03 13:16:37'
+__updated__ = '2025-01-03 13:25:16'
 
 from typing import Dict, List
 from argparse import ArgumentParser, Namespace
@@ -99,7 +99,7 @@ def main(args: Namespace = parseArgs()) -> int:
 							text_edited = f'"{v.value}"'
 							break
 
-		print(f'{rowgap},{rowid},{fromto},"{id}"",{service},{date},{text},{date_read},{date_edited},{text_edited}')
+		print(f'{rowgap},{rowid},{fromto},"{id}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
 
 	conn.commit()
 	conn.close()
