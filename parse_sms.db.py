@@ -5,7 +5,7 @@ parse_sms.db.py - Parse sms.db from iOS
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-03 13:25:16'
+__updated__ = '2025-01-03 14:16:50'
 
 from typing import Dict, List
 from argparse import ArgumentParser, Namespace
@@ -15,6 +15,16 @@ import sqlite3
 from datetime import datetime, timezone
 import plistlib
 import typedstream
+
+class color:
+	HEADER = '\033[95m'
+	OKBLUE = '\033[94m'
+	OKGREEN = '\033[92m'
+	WARNING = '\033[93m'
+	FAIL = '\033[91m'
+	ENDC = '\033[0m'
+	BOLD = '\033[1m'
+	UNDERLINE = '\033[4m'
 
 def macAbsTimeToUnixTime(macAbsoluteTime):
 	# Normalize nanoseconds to seconds
@@ -57,7 +67,7 @@ def main(args: Namespace = parseArgs()) -> int:
 	for row in c.fetchall():
 		rowid = row['ROWID']
 		rowiddiff = rowid - lastrowid - 1
-		rowgap = f"[❌ row gap: {rowiddiff} rows missing]" if rowiddiff > 0 else ''
+		rowgap = color.WARNING + f"[❌ row gap: {rowiddiff} rows missing]" + color.ENDC if rowiddiff > 0 else ''
 		lastrowid = rowid
   
 		fromto = "To" if row['is_from_me'] == 1 else "From"
@@ -71,8 +81,8 @@ def main(args: Namespace = parseArgs()) -> int:
 
 		if date_edited != '' and text == '':
 			# edited message with no original text
-			text = '[🧹 cleared upon unsent]'
-			text_edited = '[⏮️ unsent]'
+			text = color.WARNING + '[🧹 cleared upon unsent]' + color.ENDC
+			text_edited = color.WARNING + '[⏮️ unsent]' + color.ENDC
 
 		# parse original and edited texts from message_summary_info
 		if row['message_summary_info'] is not None:
