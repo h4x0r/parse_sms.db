@@ -5,9 +5,8 @@ parse_sms.db.py - Parse sms.db from iOS
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-03 14:16:50'
+__updated__ = '2025-01-04 13:34:30'
 
-from typing import Dict, List
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 import sys
@@ -45,7 +44,7 @@ def openSQLiteDB(db):
 		print(f"Error opening sms.db file: {e}")
 		return None
 
-def parseArgs(cliArgs: List[str] = None) -> Namespace: # None means sys.argv[1:]
+def parseArgs(cliArgs: list[str] = None) -> Namespace: # None means sys.argv[1:]
 	parser = ArgumentParser()
 	parser.add_argument("file", help="sms.db file, usually located in /private/var/mobile/Library/SMS/sms.db")
 	return parser.parse_args(args=cliArgs)
@@ -69,7 +68,7 @@ def main(args: Namespace = parseArgs()) -> int:
 		rowiddiff = rowid - lastrowid - 1
 		rowgap = color.WARNING + f"[❌ row gap: {rowiddiff} rows missing]" + color.ENDC if rowiddiff > 0 else ''
 		lastrowid = rowid
-  
+
 		fromto = "To" if row['is_from_me'] == 1 else "From"
 		id = row['id'] # handle.id
 		service = row['service']
