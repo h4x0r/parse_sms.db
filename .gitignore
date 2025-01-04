@@ -1,4 +1,5 @@
 sms.db
 sms.db-wal
 sms.db-shm
+sms.csv
 .DS_Store
