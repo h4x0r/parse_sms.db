@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-parse_sms.db.py - Parse sms.db from iOS
+parse_smsdb.py - Parse sms.db from iOS
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-05 22:30:54'
+__updated__ = '2025-01-06 00:31:03'
 
-from argparse import ArgumentParser, Namespace
+import typer
+from typing_extensions import Annotated
 from pathlib import Path
 import sys
 import sqlite3 
@@ -26,18 +27,18 @@ class color:
 	BOLD = '\033[1m'
 	UNDERLINE = '\033[4m'
 
-def macAbsTimeToUnixTime(macAbsoluteTime):
+def mac_abs_time_to_unix_time(mac_abs_time):
 	# Normalize nanoseconds to seconds
-	if macAbsoluteTime > 0xFFFFFFFF:
-		macAbsoluteTime = macAbsoluteTime / 1e9
+	if mac_abs_time > 0xFFFFFFFF:
+		mac_abs_time = mac_abs_time / 1e9
 
 	# Mac absolute time is from 2001-01-01, Unix time is from 1970-01-01
-	return macAbsoluteTime + 978307200
+	return mac_abs_time + 978307200
 
-def unixTimeToString(unixTime):
+def unix_time_to_string(unixTime):
 	return datetime.fromtimestamp(unixTime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
 
-def openSQLiteDB(db):
+def open_sqlite_db(db):
 	try:
 		conn = sqlite3.connect(db)
 		return conn
@@ -45,24 +46,21 @@ def openSQLiteDB(db):
 		print(f"Error opening sms.db file: {e}")
 		return None
 
-def parseArgs(cliArgs: list[str] = None) -> Namespace: # None means sys.argv[1:]
-	parser = ArgumentParser()
-	parser.add_argument("file", help="sms.db file, usually located in /private/var/mobile/Library/SMS/sms.db")
-	return parser.parse_args(args=cliArgs)
-
-def main(args: Namespace = parseArgs()) -> int:
-	file = Path(args.file)
-	if not file.is_file():
-		print(f'File {args.file} does not exist')
+def parse_smsdb(
+    file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
+):
+	f = Path(file)
+	if not f.is_file():
+		print(f'File {file} does not exist')
 		raise SystemExit(1)
-	if zipfile.is_zipfile(file):
+	if zipfile.is_zipfile(f):
 		with zipfile.ZipFile(file, 'r') as zip_ref:
 			for file_name in zip_ref.namelist():
 				if file_name.endswith('sms.db'):
-					file = zip_ref.extract(file_name,path='/tmp')
+					f = zip_ref.extract(file_name,path='/tmp')
 					break
 
-	conn = openSQLiteDB(file)
+	conn = open_sqlite_db(f)
 	conn.row_factory = sqlite3.Row
 	c = conn.cursor() 
 	statement = '''SELECT * FROM message m, handle h WHERE m.handle_id = h.ROWID ORDER BY m.ROWID'''
@@ -79,10 +77,10 @@ def main(args: Namespace = parseArgs()) -> int:
 		fromto = "To" if row['is_from_me'] == 1 else "From"
 		id = row['id'] # handle.id
 		service = row['service']
-		date = unixTimeToString(macAbsTimeToUnixTime(row['date']))
+		date = unix_time_to_string(mac_abs_time_to_unix_time(row['date']))
 		text = f'"{row['text']}"' if row['text'] is not None else ''
 		if row['date_read']:
-			date_read = unixTimeToString(macAbsTimeToUnixTime(row['date_read']))
+			date_read = unix_time_to_string(mac_abs_time_to_unix_time(row['date_read']))
 		else:
 			if row['is_read'] == 1:
 				date_read = '[📭 read but read time data not available]'
@@ -95,7 +93,7 @@ def main(args: Namespace = parseArgs()) -> int:
 					case _: # unknown (future) messaging service
 						date_read = f'[❔ not known if read or not: {row['service']} not supported]'
 
-		date_edited = unixTimeToString(macAbsTimeToUnixTime(row['date_edited'])) if row['date_edited'] else ''
+		date_edited = unix_time_to_string(mac_abs_time_to_unix_time(row['date_edited'])) if row['date_edited'] else ''
 		text_edited = ''
 
 		if date_edited != '' and text == '':
@@ -135,5 +133,8 @@ def main(args: Namespace = parseArgs()) -> int:
 
 	return 0 # success
 
+app = typer.Typer()
+app.command()(parse_smsdb)
+
 if __name__ == "__main__":
-    sys.exit(main(parseArgs()))
+    app()
