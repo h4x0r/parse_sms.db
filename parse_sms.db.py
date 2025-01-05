@@ -5,7 +5,7 @@ parse_sms.db.py - Parse sms.db from iOS
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-04 13:34:30'
+__updated__ = '2025-01-05 10:14:17'
 
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -74,7 +74,20 @@ def main(args: Namespace = parseArgs()) -> int:
 		service = row['service']
 		date = unixTimeToString(macAbsTimeToUnixTime(row['date']))
 		text = f'"{row['text']}"' if row['text'] is not None else ''
-		date_read = unixTimeToString(macAbsTimeToUnixTime(row['date_read'])) if row['date_read'] else '[📬 unread]'
+		if row['date_read']:
+			date_read = unixTimeToString(macAbsTimeToUnixTime(row['date_read']))
+		else:
+			if row['is_read'] == 1:
+				date_read = '[📭 read but read time data not available]'
+			else:
+				match row['service']:
+					case "SMS" | "MMS": # read receipts not supported
+						date_read = '[❔ not known if read or not: messaging service does not support read receipt]'
+					case "iMessage" | "RCS": # read receipts supported
+						date_read = '[📬 unread]'
+					case _: # unknown (future) messaging service
+						date_read = f'[❔ not known if read or not: {row['service']} not supported]'
+
 		date_edited = unixTimeToString(macAbsTimeToUnixTime(row['date_edited'])) if row['date_edited'] else ''
 		text_edited = ''
 
