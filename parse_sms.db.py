@@ -5,7 +5,7 @@ parse_sms.db.py - Parse sms.db from iOS
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-05 10:14:17'
+__updated__ = '2025-01-05 22:30:54'
 
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
@@ -14,6 +14,7 @@ import sqlite3
 from datetime import datetime, timezone
 import plistlib
 import typedstream
+import zipfile
 
 class color:
 	HEADER = '\033[95m'
@@ -50,12 +51,18 @@ def parseArgs(cliArgs: list[str] = None) -> Namespace: # None means sys.argv[1:]
 	return parser.parse_args(args=cliArgs)
 
 def main(args: Namespace = parseArgs()) -> int:
-	smsdbfile = Path(args.file)
-	if not smsdbfile.is_file():
-		print("The sms.db file doesn't exist")
+	file = Path(args.file)
+	if not file.is_file():
+		print(f'File {args.file} does not exist')
 		raise SystemExit(1)
+	if zipfile.is_zipfile(file):
+		with zipfile.ZipFile(file, 'r') as zip_ref:
+			for file_name in zip_ref.namelist():
+				if file_name.endswith('sms.db'):
+					file = zip_ref.extract(file_name,path='/tmp')
+					break
 
-	conn = openSQLiteDB(smsdbfile)
+	conn = openSQLiteDB(file)
 	conn.row_factory = sqlite3.Row
 	c = conn.cursor() 
 	statement = '''SELECT * FROM message m, handle h WHERE m.handle_id = h.ROWID ORDER BY m.ROWID'''
