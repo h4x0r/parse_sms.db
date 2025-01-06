@@ -22,7 +22,7 @@ Features:
 
 1. Install from PyPI
 ```
-pip install parse-smsdb
+pip install parse_smsdb
 ```
 
 ## Usage
