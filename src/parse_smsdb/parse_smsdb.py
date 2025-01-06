@@ -6,7 +6,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 
 Author: Albert Hui <albert@securityronin.com>
 """
-__updated__ = '2025-01-05 22:50:59'
+__updated__ = '2025-01-07 02:33:49'
 
 import typer
 from typing_extensions import Annotated
@@ -70,70 +70,70 @@ def parse_smsdb(
 		statement = '''SELECT * FROM message m, handle h WHERE m.handle_id = h.ROWID ORDER BY m.ROWID'''
 		c.execute(statement) 
 
-	print("Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
-	lastrowid = 0
-	for row in c.fetchall():
-		rowid = row['ROWID']
-		rowiddiff = rowid - lastrowid - 1
-		rowgap = color.WARNING + f"[❌ row gap: {rowiddiff} rows missing]" + color.ENDC if rowiddiff > 0 else ''
-		lastrowid = rowid
+		print("Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
+		lastrowid = 0
+		for row in c.fetchall():
+			rowid = row['ROWID']
+			rowiddiff = rowid - lastrowid - 1
+			rowgap = color.WARNING + f"[❌ row gap: {rowiddiff} rows missing]" + color.ENDC if rowiddiff > 0 else ''
+			lastrowid = rowid
 
-		fromto = "To" if row['is_from_me'] == 1 else "From"
-		id = row['id'] # handle.id
-		service = row['service']
-		date = unix_time_to_string(mac_abs_time_to_unix_time(row['date']))
-		text = f'"{row['text']}"' if row['text'] is not None else ''
-		if row['date_read']:
-			date_read = unix_time_to_string(mac_abs_time_to_unix_time(row['date_read']))
-		else:
-			if row['is_read'] == 1:
-				date_read = '[📭 read but read time data not available]'
+			fromto = "To" if row['is_from_me'] == 1 else "From"
+			id = row['id'] # handle.id
+			service = row['service']
+			date = unix_time_to_string(mac_abs_time_to_unix_time(row['date']))
+			text = f'"{row['text']}"' if row['text'] is not None else ''
+			if row['date_read']:
+				date_read = unix_time_to_string(mac_abs_time_to_unix_time(row['date_read']))
 			else:
-				match row['service']:
-					case "SMS" | "MMS": # read receipts not supported
-						date_read = '[❔ not known if read or not: messaging service does not support read receipt]'
-					case "iMessage" | "RCS": # read receipts supported
-						date_read = '[📬 unread]'
-					case _: # unknown (future) messaging service
-						date_read = f'[❔ not known if read or not: {row['service']} not supported]'
+				if row['is_read'] == 1:
+					date_read = '[📭 read but read time data not available]'
+				else:
+					match row['service']:
+						case "SMS" | "MMS": # read receipts not supported
+							date_read = '[❔ not known if read or not: messaging service does not support read receipt]'
+						case "iMessage" | "RCS": # read receipts supported
+							date_read = '[📬 unread]'
+						case _: # unknown (future) messaging service
+							date_read = f'[❔ not known if read or not: {row['service']} not supported]'
 
-		date_edited = unix_time_to_string(mac_abs_time_to_unix_time(row['date_edited'])) if row['date_edited'] else ''
-		text_edited = ''
+			date_edited = unix_time_to_string(mac_abs_time_to_unix_time(row['date_edited'])) if row['date_edited'] else ''
+			text_edited = ''
 
-		if date_edited != '' and text == '':
-			# edited message with no original text
-			text = color.WARNING + '[🧹 cleared upon unsent]' + color.ENDC
-			text_edited = color.WARNING + '[⏮️ unsent]' + color.ENDC
+			if date_edited != '' and text == '':
+				# edited message with no original text
+				text = color.WARNING + '[🧹 cleared upon unsent]' + color.ENDC
+				text_edited = color.WARNING + '[⏮️ unsent]' + color.ENDC
 
-		# parse original and edited texts from message_summary_info
-		if row['message_summary_info'] is not None:
-			message_summary_info = plistlib.loads(row['message_summary_info'])
-			if 'ec' in message_summary_info and '0' in message_summary_info['ec']:
-				# original text
-				ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[0])['t'])
-				for c in ts.contents:
-					for v in c.values:
-						# check if v has the property 'archived_name'
-						if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
-							continue
-						if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
-							text = f'"{v.value}"'
-							break
-				# edited text
-				ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[1])['t'])
-				for c in ts.contents:
-					for v in c.values:
-						# check if v has the property 'archived_name'
-						if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
-							continue
-						if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
-							text_edited = f'"{v.value}"'
-							break
+			# parse original and edited texts from message_summary_info
+			if row['message_summary_info'] is not None:
+				message_summary_info = plistlib.loads(row['message_summary_info'])
+				if 'ec' in message_summary_info and '0' in message_summary_info['ec']:
+					# original text
+					ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[0])['t'])
+					for c in ts.contents:
+						for v in c.values:
+							# check if v has the property 'archived_name'
+							if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
+								continue
+							if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
+								text = f'"{v.value}"'
+								break
+					# edited text
+					ts = typedstream.unarchive_from_data((((message_summary_info['ec'])['0'])[1])['t'])
+					for c in ts.contents:
+						for v in c.values:
+							# check if v has the property 'archived_name'
+							if not (hasattr(v, 'archived_name') and hasattr(v, 'value')):
+								continue
+							if (v.archived_name == b'NSMutableString' or v.archived_name == b'NSString') and v.value is not None:
+								text_edited = f'"{v.value}"'
+								break
 
-		print(f'{rowgap},{rowid},{fromto},"{id}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
+			print(f'{rowgap},{rowid},{fromto},"{id}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
 
-	conn.commit()
-	conn.close()
+		conn.commit()
+		conn.close()
 
 def main():
 	typer.run(parse_smsdb)
