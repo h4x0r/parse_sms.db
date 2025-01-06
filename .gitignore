@@ -1,7 +1,8 @@
+dist
+.venv
+mise.toml
+.DS_Store
 sms.db
 sms.db-wal
 sms.db-shm
 sms.csv
-.venv
-mise.toml
-.DS_Store

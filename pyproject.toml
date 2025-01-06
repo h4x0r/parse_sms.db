@@ -1,0 +1,29 @@
+[project]
+name = "parse-smsdb"
+version = "0.1.0"
+description = "Extracts iMessage, RCS, SMS/MMS chat history from iOS database file."
+authors = [
+	{ name = "Albert Hui", email = "albert@securityronin.com" }
+]
+readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: MIT License",
+]
+requires-python = ">=3.8"
+dependencies = [
+	"pytypedstream",
+	"typer",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/h4x0r/parse_sms.db"
+"Bug Tracker" = "https://github.com/h4x0r/parse_sms.db/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+parse_smsdb = "parse_smsdb.parse_smsdb:main"
