@@ -12,7 +12,7 @@ Features:
 - Highlight row gaps (indicative of deletions)
 - Annotate unsent messages
 - Flattens edited message data on to root table for easy review
-- Output message read time and annotate unread messages (for services supporting read receipts)Z
+- Output message read time and annotate unread messages (for services supporting read receipts)
 
 ## Getting Started
 
