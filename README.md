@@ -41,8 +41,8 @@ parse_smsdb 'IACIS Certified Mobile Device Examiner (ICMDE)/03 iOS/iOS Files/Evi
 
 ## Version History
 
-* 0.1.0
-	* Initial release
+* 0.1.8
+	* Initial beta release
 
 ## Contact
 

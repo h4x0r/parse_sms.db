@@ -1,6 +1,6 @@
 [project]
 name = "parse-smsdb"
-version = "0.1.7"
+version = "0.1.8"
 description = "Extracts iMessage, RCS, SMS/MMS chat history from iOS database file."
 authors = [
 	{ name = "Albert Hui", email = "albert@securityronin.com" }
