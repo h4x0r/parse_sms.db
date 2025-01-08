@@ -7,7 +7,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-01-08 12:13:02'
+__updated__ = '2025-01-08 21:17:17'
 
 def version_callback(value: bool):
 	if value:
@@ -59,7 +59,7 @@ def open_sqlite_db(db):
 		return conn
 	except sqlite3.Error as e:
 		print(f"Error opening sms.db file: {e}")
-		return None
+		raise SystemExit(1)
 
 def parse_smsdb(
     file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
@@ -67,7 +67,7 @@ def parse_smsdb(
 ):
 	f = Path(file)
 	if not f.is_file():
-		print(f'File {file} does not exist')
+		print(f'File does not exist')
 		raise SystemExit(1)
 
 	with tempfile.TemporaryDirectory() as temp_dir:
@@ -77,12 +77,19 @@ def parse_smsdb(
 					if file_name.endswith('sms.db'):
 						f = zip_ref.extract(file_name,path=temp_dir)
 						break
+			if f == Path(file):
+				print(f'Zip file does not contain an sms.db')
+				raise SystemExit(1)
 
 		conn = open_sqlite_db(f)
 		conn.row_factory = sqlite3.Row
 		c = conn.cursor() 
 		statement = '''SELECT * FROM message m, handle h WHERE m.handle_id = h.ROWID ORDER BY m.ROWID'''
-		c.execute(statement) 
+		try:
+			c.execute(statement) 
+		except sqlite3.DatabaseError as e:
+			print(f"Error executing SQL statement: {e}")
+			raise SystemExit(1)
 
 		print("Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
 		lastrowid = 0
@@ -111,8 +118,11 @@ def parse_smsdb(
 						case _: # unknown (future) messaging service
 							date_read = f'[❔ not known if read or not: {row['service']} not supported]'
 
-			date_edited = unix_time_to_string(mac_abs_time_to_unix_time(row['date_edited'])) if row['date_edited'] else ''
+			date_edited = ''
 			text_edited = ''
+
+			if 'date_edited' in row.keys():
+				date_edited = unix_time_to_string(mac_abs_time_to_unix_time(row['date_edited'])) if row['date_edited'] else ''
 
 			if date_edited != '' and text == '':
 				# edited message with no original text

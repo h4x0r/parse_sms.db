@@ -1,3 +1,5 @@
+parse_smsdb.spec
+build
 dist
 .venv
 mise.toml
