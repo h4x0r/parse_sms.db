@@ -1,6 +1,6 @@
 [project]
 name = "parse-smsdb"
-version = "0.1.6"
+version = "0.1.7"
 description = "Extracts iMessage, RCS, SMS/MMS chat history from iOS database file."
 authors = [
 	{ name = "Albert Hui", email = "albert@securityronin.com" }
@@ -11,7 +11,7 @@ classifiers = [
 	"Programming Language :: Python :: 3",
 	"License :: OSI Approved :: MIT License",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.12"
 dependencies = [
 	"pytypedstream",
 	"typer",
