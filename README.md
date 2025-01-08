@@ -2,6 +2,8 @@
 
 Extracts iMessage, RCS, SMS/MMS chat history from iOS database file.
 
+![parse_smsdb sreenshot](screenshot.png)
+
 ## Description
 
 This tool parses sms.db originated from iOS devices and outputs a CSV (common-separated value) table with annotations useful for forensic examination.
