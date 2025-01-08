@@ -2,7 +2,7 @@
 
 Extracts iMessage, RCS, SMS/MMS chat history from iOS database file.
 
-![parse_smsdb sreenshot](screenshot.png)
+![parse_smsdb sreenshot](https://github.com/h4x0r/parse_sms.db/blob/main/screenshot.png)
 
 ## Description
 
