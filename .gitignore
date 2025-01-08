@@ -1,6 +1,8 @@
 parse_smsdb.spec
 build
 dist
+build
+parse_smsdb.spec
 .venv
 mise.toml
 .DS_Store
