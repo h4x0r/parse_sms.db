@@ -7,7 +7,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-01-08 21:17:17'
+__updated__ = '2025-01-11 20:36:45'
 
 def version_callback(value: bool):
 	if value:
@@ -103,7 +103,7 @@ def parse_smsdb(
 			id = row['id'] # handle.id
 			service = row['service']
 			date = unix_time_to_string(mac_abs_time_to_unix_time(row['date']))
-			text = f'"{row['text']}"' if row['text'] is not None else ''
+			text = f'''"{row['text']}"''' if row['text'] is not None else ''
 			if row['date_read']:
 				date_read = unix_time_to_string(mac_abs_time_to_unix_time(row['date_read']))
 			else:
@@ -116,12 +116,12 @@ def parse_smsdb(
 						case "iMessage" | "RCS": # read receipts supported
 							date_read = '[📬 unread]'
 						case _: # unknown (future) messaging service
-							date_read = f'[❔ not known if read or not: {row['service']} not supported]'
+							date_read = f'''[❔ not known if read or not: {row['service']} not supported]'''
 
 			date_edited = ''
 			text_edited = ''
 
-			if 'date_edited' in row.keys():
+			if 'date_edited' in row.keys(): # sms.db is newer version with support for edit and unsend
 				date_edited = unix_time_to_string(mac_abs_time_to_unix_time(row['date_edited'])) if row['date_edited'] else ''
 
 			if date_edited != '' and text == '':
