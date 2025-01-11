@@ -18,10 +18,19 @@ Features:
 
 ### Prerequisites
 
-* Python
+##### Windows
+* nil
+
+##### macOS / Linux
+* Python 3.12+
 
 ### Installation
 
+##### Windows
+1. Download https://github.com/h4x0r/parse_sms.db/releases/download/v0.1.8/parse_smsdb-win-x64-0.1.8.zip
+2. Extract ```parse_smsdb.exe``` from the downloaded zip file and put it in ```C:\Windows\system32```
+
+##### macOS / Linux
 1. Install from PyPI
 ```
 pip install parse_smsdb
@@ -29,14 +38,14 @@ pip install parse_smsdb
 
 ## Usage
 
-* Parse sms.db
-```
-parse_smsdb 'private/var/mobile/Library/SMS/sms.db'
-```
-
-* Parse sms.db within a .zip archive
+* Parse sms.db within a .zip archive, e.g.
 ```
 parse_smsdb 'IACIS Certified Mobile Device Examiner (ICMDE)/03 iOS/iOS Files/Evidence/506 - Editing SMS iOS 16.zip'
+```
+
+* Parse sms.db, e.g.
+```
+parse_smsdb 'private/var/mobile/Library/SMS/sms.db'
 ```
 
 ## Version History
