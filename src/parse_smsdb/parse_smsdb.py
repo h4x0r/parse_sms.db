@@ -29,8 +29,10 @@ import sys
 import sqlite3 
 from datetime import datetime, timezone
 import plistlib
-import typedstream
+import typedstream 
 import zipfile
+import pandas as pd
+import re
 
 class color:
 	HEADER = '\033[95m'
@@ -61,6 +63,51 @@ def open_sqlite_db(db):
 		print(f"Error opening sms.db file: {e}")
 		raise SystemExit(1)
 
+def convert_to_html(input_path, output_path):
+    try:
+        html = """
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Table</title>
+        <style>
+        table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+        }
+        td,th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+        }
+        td { white-space:nowrap }
+        tr:nth-child(even) {
+        background-color: #dddddd;
+        }
+        </style>
+        </head>
+        <body>
+        """
+        post_html = """
+        </body>
+        </html>
+        """
+
+        # read CSV
+        csv_data = pd.read_csv(input_path)
+        html += csv_data.to_html()
+        html += post_html
+
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(html)
+
+    except Exception as e:
+        print("Failed with: " + input_path + " due to " + str(e))
+
+
 def parse_smsdb(
     file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
 	version: Annotated[ Optional[bool], typer.Option("--version", callback=version_callback, help="Show version.") ] = None,
@@ -69,6 +116,8 @@ def parse_smsdb(
 	if not f.is_file():
 		print(f'File does not exist')
 		raise SystemExit(1)
+	
+	t = open("test.csv", "w", encoding="utf-8")
 
 	with tempfile.TemporaryDirectory() as temp_dir:
 		if zipfile.is_zipfile(f):
@@ -91,7 +140,9 @@ def parse_smsdb(
 			print(f"Error executing SQL statement: {e}")
 			raise SystemExit(1)
 
-		print("Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
+		t.write(
+            "Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text\n"
+        )
 		lastrowid = 0
 		for row in c.fetchall():
 			rowid = row['ROWID']
@@ -154,10 +205,15 @@ def parse_smsdb(
 								text_edited = f'"{v.value}"'
 								break
 
-			print(f'{rowgap},{rowid},{fromto},"{id}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
+			temp = f"{rowid},{rowgap},{fromto},'{id}',{service},{date},{text},{date_read},{date_edited},{text_edited}"
+			temp_escaped = re.sub(r"\\.", "", temp)
+			t.write(temp_escaped)
+			t.write("\n")
 
 		conn.commit()
 		conn.close()
+		t.close()
+		convert_to_html("test.csv", "test.html")
 
 def main():
 	typer.run(parse_smsdb)
