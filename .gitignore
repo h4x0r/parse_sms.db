@@ -4,6 +4,7 @@ dist
 parse_smsdb.spec
 .venv
 mise.toml
+.vscode
 .DS_Store
 sms.db
 sms.db-wal
