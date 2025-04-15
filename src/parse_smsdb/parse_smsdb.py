@@ -7,7 +7,17 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-01-11 20:36:45'
+__updated__ = '2025-04-15 06:34:46'
+
+import typer
+from typing_extensions import Annotated, Optional
+from pathlib import Path
+import tempfile
+import sqlite3 
+from datetime import datetime, timezone
+import plistlib
+import typedstream
+import zipfile
 
 def version_callback(value: bool):
 	if value:
@@ -20,18 +30,6 @@ def version_callback(value: bool):
 				break
 		print(f'{__version__} build {__updated__}')
 		raise typer.Exit()
-
-import typer
-from typing_extensions import Annotated, Optional
-from pathlib import Path
-import tempfile
-import sys
-import sqlite3 
-from datetime import datetime, timezone
-import plistlib
-import typedstream
-import zipfile
-
 class color:
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
@@ -50,8 +48,8 @@ def mac_abs_time_to_unix_time(mac_abs_time):
 	# Mac absolute time is from 2001-01-01, Unix time is from 1970-01-01
 	return mac_abs_time + 978307200
 
-def unix_time_to_string(unixTime):
-	return datetime.fromtimestamp(unixTime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+def unix_time_to_string(unixtime):
+	return datetime.fromtimestamp(unixtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
 
 def open_sqlite_db(db):
 	try:
@@ -67,7 +65,7 @@ def parse_smsdb(
 ):
 	f = Path(file)
 	if not f.is_file():
-		print(f'File does not exist')
+		print('File does not exist')
 		raise SystemExit(1)
 
 	with tempfile.TemporaryDirectory() as temp_dir:
@@ -78,7 +76,7 @@ def parse_smsdb(
 						f = zip_ref.extract(file_name,path=temp_dir)
 						break
 			if f == Path(file):
-				print(f'Zip file does not contain an sms.db')
+				print('Zip file does not contain an sms.db')
 				raise SystemExit(1)
 
 		conn = open_sqlite_db(f)
@@ -100,7 +98,7 @@ def parse_smsdb(
 			lastrowid = rowid
 
 			fromto = "To" if row['is_from_me'] == 1 else "From"
-			id = row['id'] # handle.id
+			msgid = row['id'] # handle.id
 			service = row['service']
 			date = unix_time_to_string(mac_abs_time_to_unix_time(row['date']))
 			text = f'''"{row['text']}"''' if row['text'] is not None else ''
@@ -154,7 +152,7 @@ def parse_smsdb(
 								text_edited = f'"{v.value}"'
 								break
 
-			print(f'{rowgap},{rowid},{fromto},"{id}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
+			print(f'{rowgap},{rowid},{fromto},"{msgid}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
 
 		conn.commit()
 		conn.close()
@@ -164,3 +162,4 @@ def main():
 
 if __name__ == "__main__":
 	main()
+

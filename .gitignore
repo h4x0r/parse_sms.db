@@ -13,3 +13,6 @@ wheels/
 # Virtual environments
 .venv
 mise.toml
+
+# IDE settings
+.vscode
