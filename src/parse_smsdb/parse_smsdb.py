@@ -7,7 +7,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-04-16 20:52:11'
+__updated__ = '2025-04-16 21:16:24'
 
 import typer
 from typing_extensions import Annotated, Optional
