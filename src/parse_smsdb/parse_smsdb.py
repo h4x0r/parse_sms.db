@@ -7,7 +7,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-04-16 21:16:24'
+__updated__ = '2025-04-16 21:52:50'
 
 import typer
 from typing_extensions import Annotated, Optional
@@ -64,7 +64,6 @@ def open_sqlite_db(db):
 def parse_smsdb(
 	file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
 	output: Annotated[str, typer.Option("-o", "--output", help="File path for the parsed output")] = "sms.csv",
-	format: Annotated[str, typer.Option("-F", "--format", help="Type of parsed output")] = "csv",
 	version: Annotated[ Optional[bool], typer.Option("--version", callback=version_callback, help="Show version.") ] = None,
 ):
 	f = Path(file)
@@ -76,6 +75,15 @@ def parse_smsdb(
 	if of.exists():
 		print(f"Output file {of} already exists. Please choose a different output file.")
 		raise SystemExit(1)
+
+	if of.suffix == '.csv':
+		format = 'csv'
+	elif of.suffix == '.html' or of.suffix == '.htm':
+		format = 'html'
+	else:	
+		print(f"Output file must be .csv or .html/.htm")
+		raise SystemExit(1)
+
 	try:
 		of = open(of, 'w', encoding='utf-8')
 	except OSError as e:
