@@ -7,7 +7,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-04-15 06:34:46'
+__updated__ = '2025-04-16 20:52:11'
 
 import typer
 from typing_extensions import Annotated, Optional
@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 import plistlib
 import typedstream
 import zipfile
+import shutil
+import pandas as pd
 
 def version_callback(value: bool):
 	if value:
@@ -49,7 +51,7 @@ def mac_abs_time_to_unix_time(mac_abs_time):
 	return mac_abs_time + 978307200
 
 def unix_time_to_string(unixtime):
-	return datetime.fromtimestamp(unixtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+	return datetime.fromtimestamp(unixtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 def open_sqlite_db(db):
 	try:
@@ -60,7 +62,9 @@ def open_sqlite_db(db):
 		raise SystemExit(1)
 
 def parse_smsdb(
-    file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
+	file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
+	output: Annotated[str, typer.Option("-o", "--output", help="File path for the parsed output")] = "sms.csv",
+	format: Annotated[str, typer.Option("-F", "--format", help="Type of parsed output")] = "csv",
 	version: Annotated[ Optional[bool], typer.Option("--version", callback=version_callback, help="Show version.") ] = None,
 ):
 	f = Path(file)
@@ -68,16 +72,32 @@ def parse_smsdb(
 		print('File does not exist')
 		raise SystemExit(1)
 
+	of = Path(output)
+	if of.exists():
+		print(f"Output file {of} already exists. Please choose a different output file.")
+		raise SystemExit(1)
+	try:
+		of = open(of, 'w', encoding='utf-8')
+	except OSError as e:
+		print(f"Error creating output file: {e}")
+		raise SystemExit(1)
+
 	with tempfile.TemporaryDirectory() as temp_dir:
 		if zipfile.is_zipfile(f):
 			with zipfile.ZipFile(file, 'r') as zip_ref:
 				for file_name in zip_ref.namelist():
-					if file_name.endswith('sms.db'):
-						f = zip_ref.extract(file_name,path=temp_dir)
+					if file_name.endswith("sms.db"):
+						f = zip_ref.extract(file_name, path=temp_dir)
 						break
 			if f == Path(file):
 				print('Zip file does not contain an sms.db')
 				raise SystemExit(1)
+
+		try:
+			tf = open(temp_dir + "/sms.out", 'w', encoding='utf-8')
+		except OSError as e:
+			print(f"Error creating temporary file: {e}")
+			raise SystemExit(1)
 
 		conn = open_sqlite_db(f)
 		conn.row_factory = sqlite3.Row
@@ -89,7 +109,9 @@ def parse_smsdb(
 			print(f"Error executing SQL statement: {e}")
 			raise SystemExit(1)
 
-		print("Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text")
+		row = "Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text"
+		tf.write(row + '\n')
+
 		lastrowid = 0
 		for row in c.fetchall():
 			rowid = row['ROWID']
@@ -152,14 +174,32 @@ def parse_smsdb(
 								text_edited = f'"{v.value}"'
 								break
 
+			tf.write(f'{rowgap},{rowid},{fromto},"{msgid}",{service},{date},{text},{date_read},{date_edited},{text_edited}\n')
 			print(f'{rowgap},{rowid},{fromto},"{msgid}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
 
 		conn.commit()
 		conn.close()
+
+		try:
+			tf.close()
+			if format == 'csv':
+				tf = open(tf.name, 'r', encoding='utf-8')
+				shutil.copyfileobj(tf, of)
+			elif format == 'html':
+				csv = pd.read_csv(tf.name)
+				html = csv.to_html()
+				html = html.replace('<td>[93m', '<td style="background-color:orange">')
+				html = html.replace('[0m', '')
+				of.write(html)
+			else:
+				print(f"Unknown format {format}. Supported formats are csv and html.")
+				raise SystemExit(1)
+		except OSError as e:
+			print(f"Error writing to output file: {e}")
+			raise SystemExit(1)
 
 def main():
 	typer.run(parse_smsdb)
 
 if __name__ == "__main__":
 	main()
-

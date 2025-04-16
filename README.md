@@ -63,3 +63,4 @@ Project Link: [https://github.com/h4x0r/parse_sms.db](https://github.com/h4x0r/p
 
 * [IACIS MDF Training Course](https://www.iacis.com/training/mobile-device-forensics/) and [Jung Son](https://www.linkedin.com/in/jungson/)'s teaching
 * [Magnet Forensic](https://www.magnetforensics.com/)'s blog posts: [The Meaning of Messages](https://www.magnetforensics.com/blog/the-meaning-of-messages/), and [A look into iOS 18's changes](https://www.magnetforensics.com/blog/a-look-into-ios-18s-changes/)
+* [Chirag Mehta](https://github.com/Hades595) for output to file and HTML output format
