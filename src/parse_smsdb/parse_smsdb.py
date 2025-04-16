@@ -7,7 +7,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-04-16 21:52:50'
+__updated__ = '2025-04-16 21:57:56'
 
 import typer
 from typing_extensions import Annotated, Optional
@@ -77,11 +77,11 @@ def parse_smsdb(
 		raise SystemExit(1)
 
 	if of.suffix == '.csv':
-		format = 'csv'
+		fmt = 'csv'
 	elif of.suffix == '.html' or of.suffix == '.htm':
-		format = 'html'
+		fmt = 'html'
 	else:	
-		print(f"Output file must be .csv or .html/.htm")
+		print("Output file must be .csv or .html/.htm")
 		raise SystemExit(1)
 
 	try:
@@ -190,17 +190,17 @@ def parse_smsdb(
 
 		try:
 			tf.close()
-			if format == 'csv':
+			if fmt == 'csv':
 				tf = open(tf.name, 'r', encoding='utf-8')
 				shutil.copyfileobj(tf, of)
-			elif format == 'html':
+			elif fmt == 'html':
 				csv = pd.read_csv(tf.name)
 				html = csv.to_html()
 				html = html.replace('<td>[93m', '<td style="background-color:orange">')
 				html = html.replace('[0m', '')
 				of.write(html)
 			else:
-				print(f"Unknown format {format}. Supported formats are csv and html.")
+				print(f"Unknown format {fmt}. Supported formats are csv and html.")
 				raise SystemExit(1)
 		except OSError as e:
 			print(f"Error writing to output file: {e}")
