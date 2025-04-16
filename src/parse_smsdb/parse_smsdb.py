@@ -7,7 +7,7 @@ parse_smsdb.py -  Extracts iMessage, RCS, SMS/MMS chat history from iOS database
 Author: Albert Hui <albert@securityronin.com>
 """
 import importlib.metadata
-__updated__ = '2025-04-15 06:34:46'
+__updated__ = '2025-04-16 22:09:42'
 
 import typer
 from typing_extensions import Annotated, Optional
@@ -18,6 +18,8 @@ from datetime import datetime, timezone
 import plistlib
 import typedstream
 import zipfile
+import shutil
+import pandas as pd
 
 def version_callback(value: bool):
 	if value:
@@ -30,20 +32,6 @@ def version_callback(value: bool):
 				break
 		print(f'{__version__} build {__updated__}')
 		raise typer.Exit()
-
-import typer
-from typing_extensions import Annotated, Optional
-from pathlib import Path
-import tempfile
-import sys
-import sqlite3 
-from datetime import datetime, timezone
-import plistlib
-import typedstream 
-import zipfile
-import pandas as pd
-import re
-
 class color:
 	HEADER = '\033[95m'
 	OKBLUE = '\033[94m'
@@ -63,7 +51,7 @@ def mac_abs_time_to_unix_time(mac_abs_time):
 	return mac_abs_time + 978307200
 
 def unix_time_to_string(unixtime):
-	return datetime.fromtimestamp(unixtime, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+	return datetime.fromtimestamp(unixtime, tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
 def open_sqlite_db(db):
 	try:
@@ -73,72 +61,51 @@ def open_sqlite_db(db):
 		print(f"Error opening sms.db file: {e}")
 		raise SystemExit(1)
 
-def convert_to_html(input_path, output_path):
-    try:
-        html = """
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Table</title>
-        <style>
-        table {
-        font-family: arial, sans-serif;
-        border-collapse: collapse;
-        width: 100%;
-        }
-        td,th {
-        border: 1px solid #dddddd;
-        text-align: left;
-        padding: 8px;
-        }
-        td { white-space:nowrap }
-        tr:nth-child(even) {
-        background-color: #dddddd;
-        }
-        </style>
-        </head>
-        <body>
-        """
-        post_html = """
-        </body>
-        </html>
-        """
-
-        # read CSV
-        csv_data = pd.read_csv(input_path)
-        html += csv_data.to_html()
-        html += post_html
-
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(html)
-
-    except Exception as e:
-        print("Failed with: " + input_path + " due to " + str(e))
-
-
 def parse_smsdb(
-    file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
+	file: Annotated[str, typer.Argument(help="sms.db file from iOS file system at /private/var/mobile/Library/SMS/, or zip file containing sms.db")] = "sms.db",
+	output: Annotated[str, typer.Option("-o", "--output", help="File path for the parsed output")] = "sms.csv",
 	version: Annotated[ Optional[bool], typer.Option("--version", callback=version_callback, help="Show version.") ] = None,
 ):
 	f = Path(file)
 	if not f.is_file():
 		print('File does not exist')
 		raise SystemExit(1)
-	
-	t = open("test.csv", "w", encoding="utf-8")
+
+	of = Path(output)
+	if of.exists():
+		print(f"Output file {of} already exists. Please choose a different output file.")
+		raise SystemExit(1)
+
+	if of.suffix == '.csv':
+		fmt = 'csv'
+	elif of.suffix == '.html' or of.suffix == '.htm':
+		fmt = 'html'
+	else:	
+		print("Output file must be .csv or .html/.htm")
+		raise SystemExit(1)
+
+	try:
+		of = open(of, 'w', encoding='utf-8')
+	except OSError as e:
+		print(f"Error creating output file: {e}")
+		raise SystemExit(1)
 
 	with tempfile.TemporaryDirectory() as temp_dir:
 		if zipfile.is_zipfile(f):
 			with zipfile.ZipFile(file, 'r') as zip_ref:
 				for file_name in zip_ref.namelist():
-					if file_name.endswith('sms.db'):
-						f = zip_ref.extract(file_name,path=temp_dir)
+					if file_name.endswith("sms.db"):
+						f = zip_ref.extract(file_name, path=temp_dir)
 						break
 			if f == Path(file):
 				print('Zip file does not contain an sms.db')
 				raise SystemExit(1)
+
+		try:
+			tf = open(temp_dir + "/sms.out", 'w', encoding='utf-8')
+		except OSError as e:
+			print(f"Error creating temporary file: {e}")
+			raise SystemExit(1)
 
 		conn = open_sqlite_db(f)
 		conn.row_factory = sqlite3.Row
@@ -150,9 +117,9 @@ def parse_smsdb(
 			print(f"Error executing SQL statement: {e}")
 			raise SystemExit(1)
 
-		t.write(
-            "Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text\n"
-        )
+		row = "Row Gap,ROWID,From/To,Counterparty,Service,Sent/Scheduled Time,Text,Read Time,Edited Time,Edited Text"
+		tf.write(row + '\n')
+
 		lastrowid = 0
 		for row in c.fetchall():
 			rowid = row['ROWID']
@@ -215,19 +182,33 @@ def parse_smsdb(
 								text_edited = f'"{v.value}"'
 								break
 
-			temp = f"{rowid},{rowgap},{fromto},'{id}',{service},{date},{text},{date_read},{date_edited},{text_edited}"
-			temp_escaped = re.sub(r"\\.", "", temp)
-			t.write(temp_escaped)
-			t.write("\n")
+			tf.write(f'{rowgap},{rowid},{fromto},"{msgid}",{service},{date},{text},{date_read},{date_edited},{text_edited}\n')
+			print(f'{rowgap},{rowid},{fromto},"{msgid}",{service},{date},{text},{date_read},{date_edited},{text_edited}')
 
 		conn.commit()
 		conn.close()
-		t.close()
-		convert_to_html("test.csv", "test.html")
+
+		try:
+			tf.close()
+			if fmt == 'csv':
+				tf = open(tf.name, 'r', encoding='utf-8')
+				shutil.copyfileobj(tf, of)
+				tf.close()
+			elif fmt == 'html':
+				csv = pd.read_csv(tf.name)
+				html = csv.to_html()
+				html = html.replace('<td>[93m', '<td style="background-color:orange">')
+				html = html.replace('[0m', '')
+				of.write(html)
+			else:
+				print(f"Unknown format {fmt}. Supported formats are csv and html.")
+				raise SystemExit(1)
+		except OSError as e:
+			print(f"Error writing to output file: {e}")
+			raise SystemExit(1)
 
 def main():
 	typer.run(parse_smsdb)
 
 if __name__ == "__main__":
 	main()
-

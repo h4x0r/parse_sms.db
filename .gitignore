@@ -16,3 +16,8 @@ mise.toml
 
 # IDE settings
 .vscode
+
+# Project artifacts
+sms.csv
+sms.html
+sms.htm
