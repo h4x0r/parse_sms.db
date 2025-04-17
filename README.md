@@ -13,6 +13,7 @@ Features:
 - Annotate unsent messages
 - Flattens edited message data on to root table for easy review
 - Output message read time and annotate unread messages (for services supporting read receipts)
+- Generate HTML or CSV output file
 
 ## Getting Started
 
@@ -46,6 +47,11 @@ parse_smsdb 'IACIS Certified Mobile Device Examiner (ICMDE)/03 iOS/iOS Files/Evi
 * Parse sms.db, e.g.
 ```
 parse_smsdb 'private/var/mobile/Library/SMS/sms.db'
+```
+
+* Generate HTML File, e.g. (By default will generate CSV file)
+```
+parse_smsdb sms.db -o file.html
 ```
 
 ## Version History
